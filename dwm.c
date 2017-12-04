@@ -36,6 +36,9 @@
 #include <X11/Xlib.h>
 #include <X11/Xproto.h>
 #include <X11/Xutil.h>
+#include <nanomsg/nn.h>
+#include <nanomsg/pubsub.h>
+
 #ifdef XINERAMA
 #include <X11/extensions/Xinerama.h>
 #endif /* XINERAMA */
@@ -189,6 +192,7 @@ static Client *nexttiled(Client *c);
 static void pop(Client *);
 static void propertynotify(XEvent *e);
 static void quit(const Arg *arg);
+static void fkey (const Arg *arg);
 static Monitor *recttomon(int x, int y, int w, int h);
 static void resize(Client *c, int x, int y, int w, int h, int interact);
 static void resizeclient(Client *c, int x, int y, int w, int h);
@@ -1546,6 +1550,10 @@ setmfact(const Arg *arg)
 	arrange(selmon);
 }
 
+
+int nn_fd;
+
+
 void
 setup(void)
 {
@@ -1600,7 +1608,31 @@ setup(void)
 	XSelectInput(dpy, root, wa.event_mask);
 	grabkeys();
 	focus(NULL);
+	nn_fd = nn_socket (AF_SP, NN_PUB);
+	if (nn_fd < 0) {
+	  fprintf (stderr, "nn_socket: %s\n", nn_strerror (nn_errno ()));
+	}
+	if (nn_bind (nn_fd, "tcp://127.0.0.1:5555") < 0) {
+	  fprintf (stderr, "nn_bind: %s\n", nn_strerror (nn_errno ()));
+	  nn_close (nn_fd);
+	}
 }
+
+void
+fkey (const Arg *arg)
+{
+  char msg[256];
+  sprintf(msg, "f%d", arg->i);
+  int rc = nn_send (nn_fd, msg, sizeof (msg), 0);
+  if (rc < 0) {
+    /*  There are several legitimate reasons this can fail.
+	We note them for debugging purposes, but then ignore
+	otherwise. */
+    fprintf (stderr, "nn_send: %s (ignoring)\n",
+	     nn_strerror (nn_errno ()));
+  }
+}
+
 
 void
 showhide(Client *c)
