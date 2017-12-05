@@ -1621,9 +1621,16 @@ setup(void)
 void
 fkey (const Arg *arg)
 {
-  char msg[256];
-  sprintf(msg, "f%d", arg->i);
-  int rc = nn_send (nn_fd, msg, sizeof (msg), 0);
+  char *msg[12] = {
+    "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "f11", "f12"
+  };
+  int i = arg->i;
+  if(i < 1) {
+    i = 1;
+  } else if (i > 12) {
+    i = 12;
+  }
+  int rc = nn_send (nn_fd, msg[i-1], strlen(msg[i-1]), 0);
   if (rc < 0) {
     /*  There are several legitimate reasons this can fail.
 	We note them for debugging purposes, but then ignore
